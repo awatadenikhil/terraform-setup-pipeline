@@ -1,0 +1,55 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+  branches:
+    include:
+    - master
+  paths:
+    include:
+    - Terraform_V5/SetUp
+stages:
+- stage: Apply
+  displayName: Apply
+  jobs:
+  - job: apply
+    pool:
+      vmImage: windows-latest
+    steps:
+    - task: TerraformInstaller@0
+      displayName: Install Terraform
+      inputs:
+        terraformVersion: 'v1.2.3'
+    - task: AzureCLI@2
+      displayName: Azure CLI
+      inputs:
+        azureSubscription: 'Teraform_Practice_1_Service_Connection'
+        scriptType: 'ps'
+        scriptLocation: 'inlineScript'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/Terraform_V5/SetUp'
+        inlineScript: |
+          Write-Host "----------az--------"
+          az --version
+          az account show
+          Write-Host "----------terraform--------"
+          terraform -v
+          Write-Host "-----------Terraform Init-----------"
+          terraform init 
+          Write-Host "-----------Terraform Plan-----------"
+          terraform plan
+          Write-Host "-----------Terraform apply-----------"
+          terraform apply -auto-approve
+          Write-Host "-----------Terraform end apply-----------"
+    - task: CopyFiles@2
+      inputs:
+        contents: 'terraform.tfstate'
+        SourceFolder: '$(System.DefaultWorkingDirectory)/Terraform_V5/SetUp'
+        targetFolder: $(Build.ArtifactStagingDirectory)
+    
+    - task: PublishBuildArtifacts@1
+      inputs:
+        pathToPublish: $(Build.ArtifactStagingDirectory)
+        artifactName: tfstate
+          

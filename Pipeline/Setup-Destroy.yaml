@@ -1,0 +1,59 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+  branches:
+    include:
+    - master
+  paths:
+    include:
+    - Terraform_V5/SetUp
+stages:
+- stage: Destroy
+  displayName: Destroy
+  jobs:
+  - job: destroy
+    pool:
+      vmImage: windows-latest
+    steps:
+    - task: TerraformInstaller@0
+      displayName: Install Terraform
+      inputs:
+        terraformVersion: 'v1.2.3'
+    - task: DownloadBuildArtifacts@1
+      inputs:
+        buildType: 'specific'
+        project: 'cc527f20-ef4b-40e6-9728-6133920671e2'
+        pipeline: '28'
+        buildVersionToDownload: 'latest'
+        downloadType: 'specific'
+        itemPattern: 'tfstate/*.tfstate'
+        artifactName: tfstate
+        downloadPath: '$(System.DefaultWorkingDirectory)/Terraform_V5/SetUp'
+    - task: CopyFiles@2
+      inputs:
+        contents: 'terraform.tfstate'
+        SourceFolder: '$(System.DefaultWorkingDirectory)/Terraform_V5/SetUp/tfstate'
+        targetFolder: $(System.DefaultWorkingDirectory)/Terraform_V5/SetUp
+    - task: AzureCLI@2
+      displayName: Azure CLI
+      inputs:
+        azureSubscription: 'Teraform_Practice_1_Service_Connection'
+        scriptType: 'ps'
+        scriptLocation: 'inlineScript'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/Terraform_V5/SetUp'
+        inlineScript: |
+          Write-Host "----------az--------"
+          az --version
+          az account show
+          Write-Host "----------terraform--------"
+          terraform -v
+          Write-Host "-----------Terraform Init-----------"
+          terraform init 
+          Write-Host "-----------Terraform Plan-----------"
+          terraform plan
+          Write-Host "-----------Terraform destroy-----------"
+          terraform destroy -auto-approve
+          Write-Host "-----------Terraform end destroy-----------"

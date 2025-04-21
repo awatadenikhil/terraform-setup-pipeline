@@ -1,0 +1,52 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+  branches:
+    include:
+    - master
+  paths:
+    include:
+    - Terraform_V5/Infrastructure/Code
+stages:
+- stage: Apply
+  displayName: Apply
+  jobs:
+  - job: apply
+    pool:
+      vmImage: windows-latest
+    steps:
+    - task: TerraformInstaller@0
+      displayName: Install Terraform
+      inputs:
+        terraformVersion: 'v1.2.3'
+    # Azure Key Vault
+    # Download Azure Key Vault secrets
+    - task: AzureKeyVault@1
+      displayName: Azure Key Vault
+      inputs:
+        ConnectedServiceName: 'Teraform_Practice_1_Service_Connection'
+        keyVaultName: 'tp1-kv-v5'
+        secretsFilter: '*'
+        runAsPreJob: false # Azure DevOps Services only
+    - task: AzureCLI@2
+      displayName: Azure CLI
+      inputs:
+        azureSubscription: 'Teraform_Practice_1_Service_Connection'
+        scriptType: 'ps'
+        scriptLocation: 'inlineScript'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/Terraform_V5/Infrastructure/Code'
+        inlineScript: |
+          Write-Host "--------------------------------Start----------------------------"
+          $env:ARM_CLIENT_ID="$(az-client-id)"
+          $env:ARM_CLIENT_SECRET="$(az-client-secret)"
+          $env:ARM_SUBSCRIPTION_ID="$(az-subscription)"
+          $env:ARM_TENANT_ID="$(az-tenant)"
+          terraform init -backend-config="storage_account_name=$(storageaccount)" -backend-config="container_name=$(container-name)" -backend-config="key=$(key)" -backend-config="sas_token=$(sas-token)"
+          terraform workspace select ${env:ENV} ; if (-not $?) { terraform workspace new ${env:ENV} }
+          terraform plan
+          terraform apply -auto-approve
+          Write-Host "--------------------------------End-------------------------------"
+          
